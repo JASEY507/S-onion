@@ -9,7 +9,7 @@ clear
 echo ""
 echo "=========================================="
 echo "    S-onion v1.0 - Otomatik Onion Tool    "
-echo "                      
+echo "           by Aga (özel yapım)            "
 echo "=========================================="
 echo ""
 
@@ -106,7 +106,7 @@ echo ""
 echo "Yedek almayı unutma:"
 echo "    cp -r /var/lib/tor/s-onion-service/ ~/s-onion-backup/"
 echo ""
-echo "S-onion v1.0 - by soytarıomer.17 | 2025"
+echo "S-onion v1.0 - by Aga | 2025"
 echo ""
 
 exit 0
