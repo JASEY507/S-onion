@@ -1,86 +1,100 @@
 #!/bin/bash
-# ================================================
-# S-onion v1.0 - Tam Otomatik Onion Site Kurucu
-# by Aga (senin için özel yazıldı ❤️)
-# Tek komutla çalışan, IP'si %100 gizli, sadece HTML isteyen tool
-# ================================================
+# =================================================
+# S-onion v2.4 - Ubuntu 24.04 Noble Özel Sürüm
+# Tam otomatik .onion site kurucu (2025 güncel)
+# by Aga ❤️
+# =================================================
 
 clear
 echo ""
-echo "=========================================="
-echo "    S-onion v1.0 - Otomatik Onion Tool    "
-echo "           by Aga (özel yapım)            "
-echo "=========================================="
+echo "╔══════════════════════════════════════════╗"
+echo "║     S-onion v2.4 - Ubuntu 24.04 Edition   ║"
+echo "║            by Aga (özel yapım)           ║"
+echo "╚══════════════════════════════════════════╝"
 echo ""
 
-# Root kontrol
 if [[ $EUID -ne 0 ]]; then
-   echo "[-] Bu tool root olarak çalıştırılmalı! sudo ile dene."
+   echo "[-] Root lazım aga! sudo ile çalıştır."
    exit 1
 fi
 
-echo "[+] Gerekli paketler kuruluyor..."
-apt update -y >/dev/null 2>&1
-apt install tor nginx ufw curl -y >/dev/null 2>&1
+echo "[+] Sistem güncelleniyor ve paketler kuruluyor (24.04 uyumlu)..."
+apt update -y > /dev/null 2>&1
+apt upgrade -y > /dev/null 2>&1
+apt install -y tor nginx ufw curl nano > /dev/null 2>&1
 
-echo "[+] Güvenlik duvarı ayarlanıyor (sadece Tor açık kalacak)..."
-ufw allow ssh >/dev/null 2>&1
-ufw --force enable >/dev/null 2>&1
+echo "[+] Güvenlik duvarı kapanıyor (sadece Tor’a güveniyoruz)"
+ufw reset > /dev/null 2>&1
+ufw allow ssh > /dev/null 2>&1
+ufw --force enable > /dev/null 2>&1
 
-echo "[+] Tor Hidden Service oluşturuluyor (v3 - 56 karakter)..."
-mkdir -p /var/lib/tor/s-onion-service/
-chown debian-tor:debian-tor /var/lib/tor/s-onion-service/
-chmod 700 /var/lib/tor/s-onion-service/
+echo "[+] Tor Hidden Service (v3) oluşturuluyor..."
+mkdir -p /var/lib/tor/onion-service/
+chown debian-tor:debian-tor /var/lib/tor/onion-service/
+chmod 700 /var/lib/tor/onion-service/
 
 cat > /etc/tor/torrc <<EOF
-HiddenServiceDir /var/lib/tor/s-onion-service/
-HiddenServicePort 80 127.0.0.1:80
+SocksPort 0
+ControlPort 9051
+CookieAuthentication 1
+
+HiddenServiceDir /var/lib/tor/onion-service/
 HiddenServiceVersion 3
+HiddenServicePort 80 127.0.0.1:80
 EOF
 
 systemctl restart tor
+sleep 10
 
-sleep 8
+ONION=$(cat /var/lib/tor/onion-service/hostname 2>/dev/null || echo "oluşuyor...")
+while [[ $ONION == "oluşuyor..." ]]; do
+    sleep 2
+    ONION=$(cat /var/lib/tor/onion-service/hostname 2>/dev/null || echo "oluşuyor...")
+done
 
-ONION_ADDR=$(cat /var/lib/tor/s-onion-service/hostname)
-echo "[+] Onion adresin oluşturuldu: $ONION_ADDR"
+echo "[+] Onion adresin hazır: $ONION"
 
 echo "[+] Web klasörü hazırlanıyor..."
-rm -rf /var/www/s-onion
-mkdir -p /var/www/s-onion
-chown www-data:www-data /var/www/s-onion
+rm -rf /var/www/onion
+mkdir -p /var/www/onion
+chown www-data:www-data /var/www/onion
 
-echo "[+] Şimdi HTML içeriğini girebilirsin. Bitirince Ctrl+D yap."
+echo ""
+echo "[+] Şimdi HTML içeriğini yaz. Bitirince Ctrl+D bas aga!"
+echo "    (Boş bırakırsan default şık sayfa gelir)"
 
-cat > /var/www/s-onion/index.html <<EOF
+cat > /var/www/onion/index.html <<'DEFAULT'
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <title>S-onion Site</title>
   <style>
-    body { background:#000; color:#0f0; font-family: monospace; text-align:center; padding:50px; }
-    h1 { font-size: 3em; }
+    body {background:#000;color:#0f0;font-family:monospace;text-align:center;padding:50px;}
+    h1 {font-size:4em;text-shadow:0 0 10px #0f0;}
+    .blink {animation:blink 1s infinite;} @keyframes blink{50%{opacity:0;}}
   </style>
 </head>
 <body>
-  <h1>Bu site S-onion ile otomatik kuruldu!</h1>
-  <pre>
-$(cat)
-  </pre>
+  <h1>█ S-ONION ÇALIŞIYOR █</h1>
+  <p class="blink">Site başarıyla kuruldu!</p>
   <hr>
-  <small>Powered by S-onion v1.0 - by Aga</small>
+  <small>S-onion v2.4 by Aga - 2025</small>
 </body>
 </html>
+DEFAULT
+
+cat > /dev/stdin <<EOF > /var/www/onion/index.html
+$(cat)
 EOF
 
-echo "[+] Nginx ayarlanıyor..."
-cat > /etc/nginx/sites-available/s-onion <<EOF
+echo "[+] Nginx yapılandırılıyor (24.04 uyumlu)..."
+cat > /etc/nginx/sites-available/onion <<EOF
 server {
     listen 127.0.0.1:80;
     server_name localhost;
-    root /var/www/s-onion;
-    index index.html;
+    root /var/www/onion;
+    index index.html index.htm;
 
     location / {
         try_files \$uri \$uri/ =404;
@@ -88,25 +102,26 @@ server {
 }
 EOF
 
-ln -sf /etc/nginx/sites-available/s-onion /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/onion /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl restart nginx
 
 echo ""
-echo "=========================================="
-echo "        S-onion KURULUM TAMAMLANDI!       "
-echo "=========================================="
+echo "╔══════════════════════════════════════════╗"
+echo "║           KURULUM TAMAM AĞA!            ║"
+echo "╚══════════════════════════════════════════╝"
 echo ""
-echo "Onion Adresin:"
-echo "    $ONION_ADDR"
+echo "   Onion Adresin → $ONION"
 echo ""
-echo "Tor Browser'dan hemen deneyebilirsin!"
-echo "Site dosyası: /var/www/s-onion/index.html (istediğin zaman düzenle)"
+echo "   Tor Browser’dan hemen gir: $ONION"
 echo ""
-echo "Yedek almayı unutma:"
-echo "    cp -r /var/lib/tor/s-onion-service/ ~/s-onion-backup/"
+echo "   Dosyaları düzenlemek istersen:"
+echo "   nano /var/www/onion/index.html"
 echo ""
-echo "S-onion v1.0 - by Aga | 2025"
+echo "   Anahtar yedeğini mutlaka al!"
+echo "   cp -r /var/lib/tor/onion-service ~/onion-backup/"
+echo ""
+echo "   S-onion v2.4 - Ubuntu 24.04 Noble | by Aga"
 echo ""
 
 exit 0
