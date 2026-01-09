@@ -2,19 +2,19 @@
 # =================================================
 # S-onion v2.4 - Ubuntu 24.04 Noble Özel Sürüm
 # Tam otomatik .onion site kurucu (2025 güncel)
-# by Aga ❤️
+# by SOYTARI
 # =================================================
 
 clear
 echo ""
 echo "╔══════════════════════════════════════════╗"
-echo "║     S-onion v2.4 - Ubuntu 24.04 Edition   ║"
-echo "║            by Aga (özel yapım)           ║"
+echo "║     S-onion v2.4 - Ubuntu 24.04 Edition   
+echo "║                      
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
 if [[ $EUID -ne 0 ]]; then
-   echo "[-] Root lazım aga! sudo ile çalıştır."
+   echo "[-] Root lazım! sudo ile çalıştır."
    exit 1
 fi
 
