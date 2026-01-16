@@ -1,0 +1,13 @@
+[Service]
+User=onionweb
+Group=onionweb
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/onion /var/log/nginx
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
