@@ -1,56 +1,115 @@
-rm -f bash.sh install.sh && cat > install.sh <<'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
+# =================================================
+# S-onion ULTIMATE INSTALLER
+# WSL / systemd / non-systemd uyumlu
+# Root algılayan, hatasız tek parça kurulum
+# =================================================
+
 set -e
 
 clear
 echo "=========================================="
-echo "    S-onion CLEAN INSTALL"
+echo "   S-onion - Ultimate One-Click Installer"
 echo "=========================================="
+echo
 
-[ "$EUID" -ne 0 ] && echo "root gerekli" && exit 1
+# -------- ROOT CHECK --------
+if [ "$EUID" -ne 0 ]; then
+  echo "[!] Root gerekli. sudo ile tekrar çalıştır."
+  exit 1
+fi
 
+# -------- ENV DETECT --------
+if command -v systemctl >/dev/null 2>&1 && systemctl list-units >/dev/null 2>&1; then
+  INIT="systemd"
+else
+  INIT="service"
+fi
+
+echo "[+] Init sistemi: $INIT"
+
+# -------- UPDATE & INSTALL --------
+echo "[+] Paketler kuruluyor..."
 apt update -y
 apt install -y tor nginx ufw curl
 
+# -------- TOR CONFIG --------
+echo "[+] Tor yapılandırılıyor..."
+mkdir -p /var/lib/tor/hidden_service
+chmod 700 /var/lib/tor/hidden_service
+chown -R debian-tor:debian-tor /var/lib/tor
+
+cat > /etc/tor/torrc <<'EOF'
+HiddenServiceDir /var/lib/tor/hidden_service/
+HiddenServicePort 80 127.0.0.1:80
+Log notice file /var/log/tor/notices.log
+EOF
+
+# -------- NGINX CONFIG --------
+echo "[+] Nginx yapılandırılıyor..."
+rm -f /etc/nginx/sites-enabled/default
+
+cat > /etc/nginx/sites-available/s-onion <<'EOF'
+server {
+    listen 127.0.0.1:80 default_server;
+    server_name localhost;
+
+    location / {
+        root /var/www/s-onion;
+        index index.html;
+    }
+}
+EOF
+
+ln -sf /etc/nginx/sites-available/s-onion /etc/nginx/sites-enabled/s-onion
+
+mkdir -p /var/www/s-onion
+cat > /var/www/s-onion/index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+<title>S-onion Active</title>
+<style>
+body { background:#000;color:#0f0;font-family:monospace;text-align:center;padding-top:20%; }
+</style>
+</head>
+<body>
+<h1>S-onion is ONLINE</h1>
+<p>Tor Hidden Service Active</p>
+</body>
+</html>
+EOF
+
+# -------- FIREWALL --------
+echo "[+] UFW ayarlanıyor..."
 ufw --force reset
 ufw default deny incoming
 ufw default allow outgoing
-ufw allow ssh
-ufw --force enable
+ufw allow 9050
+ufw allow 80
+ufw --force enable || true
 
-mkdir -p /var/lib/tor/onion-service
-chown debian-tor:debian-tor /var/lib/tor/onion-service
-chmod 700 /var/lib/tor/onion-service
+# -------- SERVICE START --------
+echo "[+] Servisler başlatılıyor..."
+if [ "$INIT" = "systemd" ]; then
+  systemctl restart tor || true
+  systemctl restart nginx || true
+else
+  service tor restart || true
+  service nginx restart || true
+fi
 
-cat >> /etc/tor/torrc <<EOT
-HiddenServiceDir /var/lib/tor/onion-service
-HiddenServiceVersion 3
-HiddenServicePort 80 127.0.0.1:8080
-EOT
+sleep 3
 
-systemctl restart tor
-sleep 10
-
-ONION=$(cat /var/lib/tor/onion-service/hostname)
-
-mkdir -p /var/www/onion
-echo "<h1>$ONION</h1>" > /var/www/onion/index.html
-
-cat > /etc/nginx/sites-available/onion <<EOT
-server {
-    listen 127.0.0.1:8080;
-    root /var/www/onion;
-    index index.html;
-}
-EOT
-
-ln -sf /etc/nginx/sites-available/onion /etc/nginx/sites-enabled/onion
-rm -f /etc/nginx/sites-enabled/default
-
-nginx -t
-systemctl restart nginx
-
-echo ""
-echo "ONION ADRESI:"
-echo "$ONION"
-EOF
+# -------- ONION ADDRESS --------
+echo
+echo "=========================================="
+if [ -f /var/lib/tor/hidden_service/hostname ]; then
+  echo "[✓] ONION ADRESİN:"
+  cat /var/lib/tor/hidden_service/hostname
+else
+  echo "[!] Onion adresi üretilemedi. Tor loglarını kontrol et."
+fi
+echo "=========================================="
+echo
+echo "[✓] Kurulum tamamlandı."
