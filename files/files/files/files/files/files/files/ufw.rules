@@ -1,0 +1,10 @@
+ufw default deny incoming
+ufw default deny outgoing
+ufw allow ssh
+ufw allow out 53
+ufw allow out 80
+ufw allow out 443
+ufw allow out 9001
+ufw allow out 9030
+ufw allow out 9051
+ufw --force enable
