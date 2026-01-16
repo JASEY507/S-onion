@@ -1,0 +1,5 @@
+[Service]
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
